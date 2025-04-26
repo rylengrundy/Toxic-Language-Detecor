@@ -1,0 +1,46 @@
+---
+title: "Classifying Offensive Language"
+author: "Rylen Grundy"
+date: "2025-04-26"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Load Libraries
+
+```{r}
+library(tidyverse)
+library(textclean)
+library(stringr)
+```
+
+Read in data
+
+```{r}
+comments = read.csv("C:/Users/rgrun/Spring 2025/Data Mining/train.csv/train.csv", stringsAsFactors = FALSE)
+```
+
+Preview Structure
+
+```{r}
+str(comments)
+head(comments)
+colnames(comments)
+```
+
+## Clean the text
+
+```{r}
+comments_clean = comments %>%
+  mutate(
+    comment_text = tolower(comment_text),                          # Make all text lowercase
+    comment_text = gsub("http\\S+|www\\S+", "", comment_text),      # Remove URLs
+    comment_text = gsub("[[:punct:]]", "", comment_text),           # Remove punctuation
+    comment_text = gsub("\\s+", " ", comment_text),                # Replace multiple spaces with single space
+    comment_text = trimws(comment_text)                             # Trim leading and trailing spaces
+  )
+```
+
