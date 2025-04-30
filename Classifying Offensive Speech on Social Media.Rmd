@@ -9,7 +9,8 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
-
+## Section Author: Rylen Grundy
+## Date: 04-23-2025
 Load Libraries
 
 ```{r}
