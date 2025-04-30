@@ -1,0 +1,123 @@
+---
+title: "Classifying Offensive Language"
+author: "Rylen Grundy"
+date: "2025-04-26"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Load Libraries
+
+```{r}
+library(tidyverse)
+library(textclean)
+library(stringr)
+library(knitr)
+library(ggplot2)
+library(tidytext) # Make sure to install this! - Jay
+```
+
+Read in data
+
+```{r}
+comments = read.csv("C:/Users/TheMACHINE/Downloads/train.csv", stringsAsFactors = FALSE)
+# Make sure to change this to where you have the spreadsheet stored! - Jay
+```
+
+Preview Structure
+
+```{r}
+str(comments)
+head(comments)
+colnames(comments)
+```
+
+## Clean the text
+
+```{r}
+comments_clean = comments %>%
+  mutate(
+    comment_text = tolower(comment_text),                          # Make all text lowercase
+    comment_text = gsub("http\\S+|www\\S+", "", comment_text),      # Remove URLs
+    comment_text = gsub("[[:punct:]]", "", comment_text),           # Remove punctuation
+    comment_text = gsub("\\s+", " ", comment_text),                # Replace multiple spaces with single space
+    comment_text = trimws(comment_text)                             # Trim leading and trailing spaces
+  )
+```
+
+## Section Author: Jay Jones
+## Date: 4-30-2025
+
+## Run Descriptives and Stats
+
+```{r label-summary}
+# Frequency and Percentages.
+colSums(comments[, 3:8]) # Count of toxic comments
+round(colMeans(comments[, 3:8]) * 100, 2) # Percent of comments in each category
+```
+
+```{r wordcount-summary}
+# Word count Stats
+
+comments$word_count <- str_count(comments$comment_text, "\\w+") # Add the word count
+
+summary(comments$word_count)
+```
+
+```{r wordcount-histogram}
+# Histogram Time
+
+ggplot(comments, aes(x=word_count)) +
+  geom_histogram(binwidth = 5, fill = "darkred") + labs(title = "Distribution of Comment Word Counts", x = "Words per Comment", y = "Frequency")
+
+```
+
+```{r top-words-function}
+get_top_words_plot <- function(label_column, label_name) {
+  #Filter comments for given label
+  filtered_comments <- comments_clean %>%
+    filter(.data[[label_column]] == 1)
+  
+  #Tokenize and clean
+  words <- filtered_comments %>%
+    select(comment_text) %>%
+    unnest_tokens(word, comment_text) %>%
+    anti_join(stop_words, by = "word")
+  
+  #Top 15 words
+  top_words <- words %>%
+    count(word, sort = TRUE) %>%
+    slice_max(order_by = n, n = 15)
+  
+  #Plot
+  ggplot(top_words, aes(x = reorder(word, n), y = n)) + 
+    geom_col(fill = "steelblue") +
+    coord_flip() +
+    labs(title = paste("Top 15 Words in", label_name, "Comments"),
+         x = "Word", y = "Frequency")
+}
+```
+
+```{r all-top-words-plots, fig.height=6, fig.width=7}
+
+# Toxic
+get_top_words_plot("toxic", "Toxic")
+
+# Severe Toxic
+get_top_words_plot("severe_toxic", "Severe Toxic")
+
+# Obscene
+get_top_words_plot("obscene", "Obscene")
+
+# Threat
+get_top_words_plot("threat", "Threat")
+
+# Insult
+get_top_words_plot("insult", "Insult")
+
+# Identity Hate
+get_top_words_plot("identity_hate", "Identity Hate")
+```
