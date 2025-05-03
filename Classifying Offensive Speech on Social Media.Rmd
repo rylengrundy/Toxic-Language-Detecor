@@ -123,3 +123,50 @@ get_top_words_plot("insult", "Insult")
 # Identity Hate
 get_top_words_plot("identity_hate", "Identity Hate")
 ```
+
+
+## Building Harrasment Classifier
+
+```{r}
+# Step 1: Combine labels into a single harassment label
+comments_clean$harassment <- ifelse(rowSums(comments_clean[, c("toxic", "severe_toxic", "obscene", "threat", "insult", "identity_hate")]) > 0, 1, 0)
+
+# Step 2: Filter out missing comments
+comments_clean <- comments_clean[!is.na(comments_clean$comment_text), ]
+
+# Step 3: Split data into training and test sets
+set.seed(123)
+library(caret)
+split_index <- createDataPartition(comments_clean$harassment, p = 0.8, list = FALSE)
+train_data <- comments_clean[split_index, ]
+test_data <- comments_clean[-split_index, ]
+
+# Step 4: Create TF-IDF matrix
+library(text2vec)
+
+prep_fun <- tolower
+tok_fun <- word_tokenizer
+
+it_train <- itoken(train_data$comment_text, preprocessor = prep_fun, tokenizer = tok_fun, progressbar = FALSE)
+vocab <- create_vocabulary(it_train)
+vectorizer <- vocab_vectorizer(vocab)
+
+dtm_train <- create_dtm(it_train, vectorizer)
+tfidf_transformer <- TfIdf$new()
+dtm_train_tfidf <- tfidf_transformer$fit_transform(dtm_train)
+
+# Step 5: Apply same process to test data
+it_test <- itoken(test_data$comment_text, preprocessor = prep_fun, tokenizer = tok_fun, progressbar = FALSE)
+dtm_test <- create_dtm(it_test, vectorizer)
+dtm_test_tfidf <- tfidf_transformer$transform(dtm_test)
+
+# Step 6: Train logistic regression model
+library(glmnet)
+model <- cv.glmnet(x = dtm_train_tfidf, y = train_data$harassment, family = "binomial", alpha = 0)
+
+# Step 7: Predict and evaluate
+pred_probs <- predict(model, dtm_test_tfidf, s = "lambda.min", type = "response")
+preds <- ifelse(pred_probs > 0.5, 1, 0)
+
+confusionMatrix(factor(preds), factor(test_data$harassment))
+```
